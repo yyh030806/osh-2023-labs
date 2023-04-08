@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <assert.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -28,11 +29,74 @@ int excute(char* args[100])//执行单条命令
 
         }
        else{
-        if(fork()==0) //外部命令 
-        {
-        execvp(args[0],args);
+         //外部命令 
+         int i,redirect=3;
+         for(i=0;args[i]!=NULL;i++)
+         {
+          if(strcmp(args[i],">")==0)
+           {
+            redirect=0;
+            args[i]=NULL;
+            break;
+           }
+           if(strcmp(args[i],"<")==0)
+           {
+            redirect=1;
+            args[i]=NULL;
+            break;
+           }
+           if(strcmp(args[i],">>")==0)
+           {
+            redirect=2;
+            args[i]=NULL;
+            break;
+           }
+         }
+         if(redirect==0)
+         {
+          if(fork()==0)
+           { 
+            int fd;
+            int x=dup(1); 
+            fd=open(args[i+1],O_WRONLY | O_CREAT,S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+            dup2(fd,1);
+            execvp(args[0],args);
+            close(fd);
+            dup2(x,1);
+           }
+          }
+         else if(redirect==1)
+         {
+          if(fork()==0)
+          {
+           int fd;
+           int x=dup(0);
+           fd = open(args[i+1],O_RDONLY);
+           dup2(fd,0);
+           execvp(args[0],args);
+           close(fd);
+           dup2(x,0);
+          }
+         }
+         else if(redirect==2)
+         {
+          if(fork()==0)
+          {
+           int fd;
+           int x=dup(1);
+           fd=open(args[i+1],O_WRONLY | O_APPEND ,S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+           dup2(fd,1);
+           execvp(args[0],args);
+           close(fd);
+           dup2(x,1);
+          }
+         }
+         else
+         {
+          if(fork()==0)
+          execvp(args[0],args);
+         }
         }
-       }
        return 0;
 }
 int main()
@@ -43,16 +107,24 @@ int main()
         char cmd[MAX];
         char* args[MAX_NUM];
         char *str=fgets(cmd,sizeof(cmd),stdin);
-        //if(str==0) continue;
+        if(str==0) continue;
         cmd[strlen(cmd)-1]='\0';
         args[0]=strtok(cmd," ");
         int i=1;
         while(args[i++]=strtok(NULL," "));
         if(strcmp(args[0], "exit")==0) return 0;//exit命令
         int j=0;
-        int k=0,l=0;
+        int k,l;
         char* arg[MAX_NUM][MAX_NUM];
-        j=0;
+        for(k=0;k<MAX_NUM;k++)
+        {
+         for(l=0;l<MAX_NUM;l++)
+          {
+           arg[k][l]=NULL;
+          }
+        }
+        k=0;
+        l=0;
         while(j<i-1)
         {
          if(strcmp(args[j], "|")==0) 
