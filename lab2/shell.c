@@ -13,7 +13,16 @@
 int excute(char* args[100])//执行单条命令
 {
          //内部命令
-        int bg=0;
+         int j,bg=0;
+        for(j=0;args[j]!=NULL;j++)
+        {
+         if(strcmp(args[j], "&")==0) 
+          {
+           bg=1;
+           args[j]=NULL;
+          }
+        }
+        //printf("bg is %d",bg);
         if(strcmp(args[0], "pwd")==0)//pwd
         {
             char* wd=getcwd(NULL, 0);
@@ -29,7 +38,11 @@ int excute(char* args[100])//执行单条命令
                if(cd==-1) printf("No such file or directory\n");
             }
             else chdir("/home");
-
+        }
+        else if(strcmp(args[0], "wait")==0) //wait
+        {
+         waitpid(-1,NULL,0);
+         return 0;
         }
        else
        {
@@ -57,7 +70,7 @@ int excute(char* args[100])//执行单条命令
             break;
            }
          }
-         
+         pid_t fatherpgid=getpgrp();
          pid_t pid=fork();
          if(redirect==0)
          {
@@ -67,7 +80,8 @@ int excute(char* args[100])//执行单条命令
             signal(SIGTTOU,SIG_IGN);
             setpgid(getpid(),getpid());
             //设置子程序为前台进程
-            tcsetpgrp(0,getpid());
+            if(!bg) tcsetpgrp(0,getpid());
+            else tcsetpgrp(0,fatherpgid);
             int fd;
             int x=dup(1); 
             fd=open(args[i+1],O_WRONLY | O_CREAT,S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
@@ -84,7 +98,8 @@ int excute(char* args[100])//执行单条命令
            signal(SIGINT,SIG_DFL);
            signal(SIGTTOU,SIG_IGN);
            setpgid(getpid(),getpid());
-           tcsetpgrp(0,getpid());          
+           if(!bg) tcsetpgrp(0,getpid());
+           else tcsetpgrp(0,fatherpgid);        
            int fd;
            int x=dup(0);
            fd = open(args[i+1],O_RDONLY);
@@ -101,7 +116,8 @@ int excute(char* args[100])//执行单条命令
            signal(SIGINT,SIG_DFL);
            signal(SIGTTOU,SIG_IGN);
            setpgid(getpid(),getpid());
-           tcsetpgrp(0,getpid());
+           if(!bg) tcsetpgrp(0,getpid());
+           else tcsetpgrp(0,fatherpgid);
            int fd;
            int x=dup(1);
            fd=open(args[i+1],O_WRONLY | O_APPEND ,S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
@@ -118,13 +134,17 @@ int excute(char* args[100])//执行单条命令
            signal(SIGINT,SIG_DFL);
            signal(SIGTTOU,SIG_IGN);
            setpgid(getpid(),getpid());
-           tcsetpgrp(0,getpid());
+           if(!bg) tcsetpgrp(0,getpid());
+           else tcsetpgrp(0,fatherpgid);
            execvp(args[0],args);
            }
           }
+          if(bg==0)
+         {
+          waitpid(-1,NULL,0);
+          tcsetpgrp(0,getpgrp());
          }
-         waitpid(-1,NULL,0);
-         tcsetpgrp(0,getpgrp());
+        }
        return 0;
 }
 void clear(int sig)
@@ -149,7 +169,7 @@ int main()
         args[0]=strtok(cmd," ");
         int i=1;
         while(args[i++]=strtok(NULL," "));
-        if(strcmp(args[0], "exit")==0) return 0;//exit命令
+        if(strcmp(args[0], "exit")==0) return 0;//exit命
         /*p=args[i];
         int control=1;
         while(p!=NULL)
