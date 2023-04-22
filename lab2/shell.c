@@ -152,7 +152,8 @@ void clear(int sig)
  printf("(clear)\n");
 }
 int main()
-{   
+{   char history[MAX][MAX];
+    int num=0;
     signal(SIGINT,clear);
     signal(SIGTTOU,SIG_IGN);
     while(1)
@@ -163,13 +164,43 @@ int main()
         char cmd[MAX];
         char* args[MAX_NUM];
         char *str=fgets(cmd,sizeof(cmd),stdin);
+        //if(cmd[0]==26) return 0;
         char *p;
         if(str==0) continue;
         cmd[strlen(cmd)-1]='\0';
+        strcpy(history[num],cmd);
+        num++;
+excute: 
         args[0]=strtok(cmd," ");
         int i=1;
         while(args[i++]=strtok(NULL," "));
         if(strcmp(args[0], "exit")==0) return 0;//exit命
+        if(strcmp(args[0],"history")==0)
+         {
+          int total=atoi(args[1]);
+          //int count=1;
+          while(total>=1)
+           {
+            printf("%d %s\n",num+1-total,history[num-total]);
+            total--;
+           }
+           continue;
+         }
+         if(args[0][0]=='!')
+         {
+          if(args[0][1]=='!') 
+           {
+            strcpy(cmd,history[num-2]);
+            goto excute;
+           }
+           else 
+           {
+            int number=atoi(args[0]+1);
+            //printf("number is %d",number);
+            strcpy(cmd,history[number-1]);
+            goto excute;
+           }
+         }
         /*p=args[i];
         int control=1;
         while(p!=NULL)
@@ -234,6 +265,7 @@ int main()
            }
            excute(arg[m]);
            }
+           //waitpid(pid,NULL,0);
            if(m>0) close(lastread);
            if(m<k) lastread=fd[0];
            close(fd[1]);
